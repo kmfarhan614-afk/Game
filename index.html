@@ -1,0 +1,469 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#000000" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<title>Flash — Social Camera</title>
+<link rel="icon" type="image/jpeg" href="logo.jpg" />
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+:root{--primary:#ff3b5c;--primary-gradient:linear-gradient(135deg,#ff3b5c,#ff6b3d);--bg:#000;--surface:#0f0f1f;--surface2:#1a1a2e;--surface3:rgba(255,255,255,.04);--text:#fff;--text2:rgba(255,255,255,.7);--text3:rgba(255,255,255,.35);--radius-sm:10px;--radius-full:999px;}
+html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;position:fixed;}
+input,textarea,button{font-family:inherit;outline:none;border:none;background:none;color:inherit;}
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--primary);border-radius:3px;}
+.screen{display:none;position:fixed;inset:0;background:var(--bg);z-index:1;overflow-y:auto;}
+.screen.active{display:flex;flex-direction:column;z-index:2;animation:screenIn .35s cubic-bezier(.4,0,.2,1);}
+.screen.no-scroll{overflow:hidden;}
+@keyframes screenIn{from{opacity:0;transform:translateY(10px) scale(.98);}to{opacity:1;transform:translateY(0) scale(1);}}
+@keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+@keyframes scaleIn{from{transform:scale(.8);opacity:0;}to{transform:scale(1);opacity:1;}}
+@keyframes pulse{0%{transform:scale(1);}50%{transform:scale(1.05);}100%{transform:scale(1);}}
+@keyframes shimmer{0%{background-position:-200% 0;}100%{background-position:200% 0;}}
+@keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+@keyframes toastIn{from{transform:translateY(20px) scale(.9);opacity:0;}to{transform:translateY(0) scale(1);opacity:1;}}
+
+#splashScreen{justify-content:center;align-items:center;background:radial-gradient(ellipse at 50% 30%,#1a0a1a,#000 80%);z-index:100;}
+.splash-logo{font-size:4rem;font-weight:800;background:var(--primary-gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:float 2s ease-in-out infinite;}
+.splash-sub{color:var(--text3);font-size:.85rem;margin-top:8px;letter-spacing:2px;text-transform:uppercase;}
+.splash-loader{width:120px;height:3px;background:var(--surface3);border-radius:3px;margin-top:32px;overflow:hidden;position:relative;}
+.splash-loader::after{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:var(--primary-gradient);border-radius:3px;animation:shimmer 1.5s ease-in-out infinite;}
+.splash-brand{width:80px;height:80px;border-radius:50%;object-fit:cover;margin-bottom:16px;border:3px solid rgba(255,255,255,.08);box-shadow:0 8px 32px rgba(0,0,0,.4);}
+
+#authScreen{justify-content:center;align-items:center;padding:24px;background:radial-gradient(ellipse at 50% 0%,#1a0a1a 0%,#000 70%);}
+.auth-box{width:100%;max-width:380px;}
+.auth-logo{text-align:center;margin-bottom:28px;}
+.auth-logo img{width:56px;height:56px;border-radius:16px;object-fit:cover;margin-bottom:10px;box-shadow:0 4px 20px rgba(255,59,92,.2);}
+.auth-logo h1{font-size:2.6rem;font-weight:800;background:var(--primary-gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-1px;}
+.auth-logo p{color:var(--text3);font-size:.85rem;margin-top:4px;}
+.auth-tabs{display:flex;gap:4px;margin-bottom:22px;background:var(--surface3);border-radius:var(--radius-sm);padding:4px;}
+.auth-tab{flex:1;text-align:center;padding:11px;border-radius:8px;font-weight:600;font-size:.85rem;color:var(--text3);cursor:pointer;transition:all .3s;}
+.auth-tab.active{background:var(--primary-gradient);color:#fff;box-shadow:0 4px 16px rgba(255,59,92,.3);}
+.auth-field{background:var(--surface3);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;border:1px solid transparent;transition:border-color .3s;}
+.auth-field:focus-within{border-color:rgba(255,59,92,.3);}
+.auth-field .icon{font-size:1.1rem;opacity:.3;width:20px;}
+.auth-field input{background:none;color:var(--text);font-size:.95rem;width:100%;}
+.auth-field input::placeholder{color:var(--text3);}
+.auth-btn{width:100%;padding:14px;border-radius:var(--radius-full);font-weight:700;font-size:.95rem;cursor:pointer;transition:all .25s;margin-top:4px;}
+.auth-btn:active{transform:scale(.97);}
+.auth-btn.primary{background:var(--primary-gradient);color:#fff;box-shadow:0 4px 20px rgba(255,59,92,.25);}
+.auth-btn.ghost{background:none;color:var(--text3);font-size:.82rem;padding:10px;}
+.auth-divider{display:flex;align-items:center;gap:14px;color:var(--text3);font-size:.78rem;margin:18px 0;}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:var(--surface3);}
+.auth-error{color:var(--primary);font-size:.8rem;text-align:center;margin-bottom:8px;display:none;animation:scaleIn .3s ease;}
+.auth-social{display:flex;gap:10px;}
+.auth-social button{flex:1;padding:12px;border-radius:var(--radius-sm);background:var(--surface3);cursor:pointer;font-weight:600;font-size:.82rem;transition:all .25s;display:flex;align-items:center;justify-content:center;gap:8px;}
+.cam-btn{width:38px;height:38px;border-radius:50%;background:rgba(0,0,0,.5);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;font-size:1.1rem;cursor:pointer;border:1px solid rgba(255,255,255,.06);transition:all .2s;}
+.cam-btn:active{transform:scale(.88);background:rgba(255,59,92,.3);}
+.flash-status{position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);font-size:.6rem;color:#ffd700;font-weight:700;background:rgba(0,0,0,.6);padding:2px 8px;border-radius:8px;display:none;white-space:nowrap;}
+.camera-timer{position:absolute;top:70px;left:50%;transform:translateX(-50%);font-size:3rem;font-weight:800;color:#fff;z-index:15;display:none;text-shadow:0 2px 12px rgba(0,0,0,.5);}
+.camera-bottom{position:absolute;bottom:0;left:0;right:0;padding:20px 24px calc(20px + env(safe-area-inset-bottom));display:flex;align-items:center;justify-content:space-between;z-index:10;background:linear-gradient(transparent,rgba(0,0,0,.5),rgba(0,0,0,.7));}
+.capture-btn{width:76px;height:76px;border-radius:50%;border:4px solid rgba(255,255,255,.8);background:transparent;cursor:pointer;position:relative;transition:all .15s;flex-shrink:0;}
+.capture-btn:active{transform:scale(.9);}
+.capture-btn .inner{position:absolute;inset:5px;border-radius:50%;background:#fff;transition:all .25s;}
+.capture-btn.recording .inner{background:var(--primary);border-radius:6px;inset:20px;}
+.capture-btn.recording{animation:pulse 1.2s infinite;}
+.cam-side-btn{width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.4);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1.2rem;border:1px solid rgba(255,255,255,.06);transition:all .2s;}
+.cam-side-btn:active{transform:scale(.9);background:rgba(255,59,92,.2);}
+.filters-bar{position:absolute;bottom:106px;left:0;right:0;padding:0 12px;z-index:10;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;}
+.filters-bar::-webkit-scrollbar{display:none;}
+.filter-chip{flex-shrink:0;padding:6px 16px;border-radius:var(--radius-full);background:rgba(0,0,0,.5);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.06);color:var(--text2);font-size:.78rem;font-weight:500;cursor:pointer;transition:all .25s;white-space:nowrap;}
+.filter-chip.active{background:var(--primary-gradient);color:#fff;border-color:transparent;box-shadow:0 4px 16px rgba(255,59,92,.3);}
+.filter-overlay{position:absolute;inset:0;pointer-events:none;z-index:5;transition:all .3s;}
+.filter-overlay.clarendon{filter:contrast(1.2) saturate(1.3);}
+.filter-overlay.gingham{filter:sepia(.3) contrast(1.1) brightness(1.05);}
+.filter-overlay.juno{filter:contrast(1.1) saturate(1.5) brightness(.95) hue-rotate(-10deg);}
+.filter-overlay.lark{filter:brightness(1.08) contrast(.95) saturate(.8) hue-rotate(10deg);}
+.filter-overlay.reyes{filter:sepia(.2) brightness(1.1) contrast(.85) saturate(.7);}
+.filter-overlay.aden{filter:sepia(.15) brightness(1.05) contrast(.9) hue-rotate(330deg);}
+.filter-overlay.perpetua{filter:contrast(.9) brightness(1.1) saturate(.7) hue-rotate(320deg);}
+.capture-flash{position:absolute;inset:0;background:#fff;z-index:20;pointer-events:none;opacity:0;transition:opacity .1s;}
+.capture-flash.active{opacity:.6;}.capture-flash.fade{opacity:0;transition:opacity .3s;}
+.bottom-nav{display:flex;background:rgba(10,10,20,.92);backdrop-filter:blur(20px);border-top:1px solid rgba(255,255,255,.04);padding:4px 0 calc(4px + env(safe-area-inset-bottom));flex-shrink:0;z-index:50;}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 0;cursor:pointer;color:var(--text3);transition:all .2s;font-size:.62rem;font-weight:500;position:relative;}
+.nav-item .icon{font-size:1.35rem;transition:all .25s;}
+.nav-item.active{color:var(--text);}
+.nav-item.active .icon{transform:scale(1.1);}
+.nav-item.active::after{content:'';position:absolute;top:-4px;left:50%;transform:translateX(-50%);width:20px;height:3px;border-radius:3px;background:var(--primary-gradient);}
+.nav-item .badge{position:absolute;top:-2px;right:50%;transform:translateX(16px);background:var(--primary);color:#fff;font-size:.55rem;padding:1px 5px;border-radius:10px;font-weight:700;min-width:16px;text-align:center;box-shadow:0 2px 8px rgba(255,59,92,.4);}
+
+#chatScreen{background:var(--surface);}
+.chat-header{display:flex;align-items:center;gap:12px;padding:12px 16px;background:rgba(10,10,20,.92);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,.04);flex-shrink:0;position:sticky;top:0;z-index:10;}
+.chat-header h2{font-size:1.15rem;font-weight:700;}
+.chat-search{padding:8px 16px 4px;flex-shrink:0;}
+.chat-search input{width:100%;padding:10px 16px;border-radius:var(--radius-full);background:var(--surface3);color:var(--text);font-size:.88rem;transition:background .3s;}
+.chat-search input:focus{background:rgba(255,255,255,.08);}
+.chat-search input::placeholder{color:var(--text3);}
+.chat-list{flex:1;overflow-y:auto;padding:4px 12px 12px;}
+.chat-item{display:flex;align-items:center;gap:12px;padding:12px 10px;border-radius:var(--radius-sm);cursor:pointer;transition:all .2s;}
+.chat-item:hover{background:var(--surface3);}
+.chat-item:active{transform:scale(.98);}
+.chat-avatar{width:52px;height:52px;border-radius:50%;background:var(--primary-gradient);display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700;flex-shrink:0;position:relative;color:#fff;}
+.chat-avatar .online{position:absolute;bottom:1px;right:1px;width:13px;height:13px;border-radius:50%;background:#2ecc71;border:2.5px solid var(--surface);}
+.chat-info{flex:1;min-width:0;}
+.chat-info .name{font-weight:600;font-size:.92rem;margin-bottom:2px;}
+.chat-info .msg{color:var(--text3);font-size:.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.chat-meta{text-align:right;flex-shrink:0;}
+.chat-meta .time{color:var(--text3);font-size:.7rem;}
+.chat-meta .unread{background:var(--primary);color:#fff;font-size:.62rem;padding:2px 7px;border-radius:10px;font-weight:700;margin-top:4px;display:inline-block;min-width:18px;text-align:center;}
+#conversationScreen{background:var(--surface);}
+.conv-header{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(10,10,20,.92);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,.04);flex-shrink:0;}
+.conv-header .back{cursor:pointer;font-size:1.3rem;opacity:.6;padding:4px;transition:opacity .2s;}
+.conv-header .info{flex:1;min-width:0;}
+.conv-header .info .name{font-weight:700;font-size:.95rem;}
+.conv-header .info .status{color:var(--text3);font-size:.72rem;}
+.conv-header .actions{display:flex;gap:10px;}
+.conv-header .actions span{cursor:pointer;opacity:.5;transition:opacity .2s;font-size:1.1rem;}
+.conv-messages{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:4px;scroll-behavior:smooth;}
+.msg-bubble{max-width:78%;padding:10px 14px;border-radius:18px;font-size:.9rem;line-height:1.45;word-wrap:break-word;animation:scaleIn .2s ease;}
+.msg-bubble.sent{background:var(--primary-gradient);color:#fff;align-self:flex-end;border-bottom-right-radius:4px;box-shadow:0 2px 8px rgba(255,59,92,.15);}
+.msg-bubble.received{background:var(--surface3);color:var(--text);align-self:flex-start;border-bottom-left-radius:4px;}
+.msg-bubble .meta{font-size:.62rem;opacity:.5;margin-top:4px;text-align:right;display:flex;align-items:center;justify-content:flex-end;gap:4px;}
+.msg-bubble.media{padding:4px;max-width:72%;}
+.msg-bubble.media img,.msg-bubble.media video{width:100%;border-radius:14px;display:block;max-height:240px;object-fit:cover;}
+.conv-input{display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(10,10,20,.92);backdrop-filter:blur(20px);border-top:1px solid rgba(255,255,255,.04);flex-shrink:0;}
+.conv-input .plus{font-size:1.3rem;cursor:pointer;opacity:.4;padding:4px;}
+.conv-input input{flex:1;padding:10px 16px;border-radius:var(--radius-full);background:var(--surface3);color:var(--text);font-size:.9rem;transition:background .3s;}
+.conv-input input:focus{background:rgba(255,255,255,.08);}
+.conv-input input::placeholder{color:var(--text3);}
+.conv-input .send-btn{width:38px;height:38px;border-radius:50%;background:var(--primary-gradient);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.9rem;flex-shrink:0;transition:all .2s;box-shadow:0 2px 12px rgba(255,59,92,.25);border:none;}
+.conv-input .send-btn:active{transform:scale(.9);}
+.conv-input .send-btn:disabled{opacity:.3;box-shadow:none;pointer-events:none;}
+
+#storiesScreen{background:var(--surface);}
+.stories-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:rgba(10,10,20,.92);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,.04);flex-shrink:0;position:sticky;top:0;z-index:10;}
+.stories-header h2{font-size:1.15rem;font-weight:700;}
+.stories-list{flex:1;overflow-y:auto;padding:8px 12px 16px;}
+.story-row{display:flex;align-items:center;gap:14px;padding:12px 10px;border-radius:var(--radius-sm);cursor:pointer;transition:all .2s;}
+.story-row:hover{background:var(--surface3);}
+.story-row:active{transform:scale(.98);}
+.story-ring{width:58px;height:58px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;position:relative;}
+.story-ring.has-story{background:conic-gradient(var(--primary),#ff6b3d,#f7971e,var(--primary));padding:3px;}
+.story-ring .inner{width:100%;height:100%;border-radius:50%;object-fit:cover;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700;color:#fff;}
+.story-ring .plus{position:absolute;bottom:-1px;right:-1px;width:22px;height:22px;border-radius:50%;background:var(--primary-gradient);display:flex;align-items:center;justify-content:center;font-size:.65rem;color:#fff;border:2.5px solid var(--surface);box-shadow:0 2px 8px rgba(255,59,92,.3);}
+.story-info{flex:1;}
+.story-info .name{font-weight:600;font-size:.92rem;}
+.story-info .sub{color:var(--text3);font-size:.76rem;margin-top:2px;}
+#storyViewer{position:fixed;inset:0;background:#000;z-index:200;display:none;flex-direction:column;}
+#storyViewer.active{display:flex;animation:fadeIn .25s ease;}
+.story-progress{display:flex;gap:4px;padding:12px 10px 6px;flex-shrink:0;z-index:10;}
+.story-progress .bar{flex:1;height:2.5px;background:rgba(255,255,255,.15);border-radius:3px;overflow:hidden;}
+.story-progress .bar .fill{height:100%;background:#fff;width:0%;border-radius:3px;transition:width .1s linear;}
+.story-progress .bar.viewed .fill{width:100%;background:rgba(255,255,255,.4);}
+.story-viewer-body{flex:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;}
+.story-viewer-body .media{max-width:100%;max-height:100%;object-fit:contain;font-size:5rem;text-align:center;animation:scaleIn .3s ease;}
+.story-viewer-body .story-text{position:absolute;bottom:50px;left:24px;right:24px;color:#fff;font-size:1.2rem;font-weight:600;text-shadow:0 2px 16px rgba(0,0,0,.6);text-align:center;}
+.story-header-overlay{position:absolute;top:0;left:0;right:0;padding:50px 14px 20px;display:flex;align-items:center;gap:10px;background:linear-gradient(rgba(0,0,0,.5),transparent);z-index:8;}
+.story-header-overlay .name{font-weight:700;font-size:.9rem;text-shadow:0 1px 4px rgba(0,0,0,.5);}
+.story-header-overlay .time{color:rgba(255,255,255,.6);font-size:.72rem;}
+.story-close{position:absolute;top:48px;right:14px;z-index:12;font-size:1.4rem;cursor:pointer;opacity:.7;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(0,0,0,.3);border:none;color:#fff;transition:all .2s;}
+#feedScreen{background:#000;}
+.feed-viewport{flex:1;position:relative;overflow:hidden;background:#000;}
+.feed-slide{position:absolute;inset:0;}
+.feed-bg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:6rem;}
+.feed-gradient{position:absolute;inset:0;background:linear-gradient(transparent 50%,rgba(0,0,0,.7)),linear-gradient(rgba(0,0,0,.2),transparent 30%);pointer-events:none;z-index:2;}
+.feed-sidebar{position:absolute;right:14px;bottom:100px;display:flex;flex-direction:column;align-items:center;gap:20px;z-index:5;pointer-events:auto;}
+.feed-action{display:flex;flex-direction:column;align-items:center;gap:2px;color:#fff;cursor:pointer;transition:all .2s;text-shadow:0 2px 8px rgba(0,0,0,.3);}
+.feed-action .icon{font-size:1.7rem;transition:all .2s;}
+.feed-action .label{font-size:.6rem;font-weight:600;opacity:.8;}
+.feed-action:active .icon{transform:scale(1.2);}
+.feed-action.liked .icon{color:var(--primary);animation:pulse .4s ease;}
+.feed-bottom{position:absolute;bottom:24px;left:16px;right:70px;z-index:4;pointer-events:auto;}
+.feed-bottom .username{font-weight:700;font-size:.92rem;margin-bottom:3px;text-shadow:0 1px 6px rgba(0,0,0,.5);}
+.feed-bottom .caption{color:rgba(255,255,255,.85);font-size:.8rem;line-height:1.4;text-shadow:0 1px 6px rgba(0,0,0,.3);}
+.feed-bottom .music{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:.78rem;color:rgba(255,255,255,.7);}
+.feed-nav{position:absolute;right:12px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:6px;z-index:3;pointer-events:none;}
+.feed-nav .dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.35);transition:all .3s;}
+.feed-nav .dot.active{height:18px;border-radius:4px;background:#fff;}
+
+#profileScreen{background:var(--surface);}
+.profile-cover{height:120px;background:var(--primary-gradient);opacity:.6;flex-shrink:0;}
+.profile-head{display:flex;flex-direction:column;align-items:center;margin-top:-40px;padding:0 16px 16px;flex-shrink:0;}
+.profile-avatar{width:80px;height:80px;border-radius:50%;background:var(--primary-gradient);display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:700;color:#fff;position:relative;border:4px solid var(--surface);margin-bottom:8px;}
+.profile-avatar .badge{position:absolute;bottom:-2px;right:-2px;width:26px;height:26px;border-radius:50%;background:var(--primary-gradient);display:flex;align-items:center;justify-content:center;font-size:.7rem;border:2.5px solid var(--surface);cursor:pointer;box-shadow:0 2px 8px rgba(255,59,92,.3);}
+.profile-name{font-size:1.3rem;font-weight:700;}
+.profile-username{color:var(--text3);font-size:.82rem;margin-top:1px;}
+.profile-bio{color:var(--text2);font-size:.85rem;margin-top:8px;text-align:center;max-width:280px;line-height:1.4;}
+.profile-stats{display:flex;gap:28px;margin-top:14px;}
+.profile-stat{text-align:center;cursor:pointer;}
+.profile-stat:active{opacity:.6;}
+.profile-stat .num{font-weight:700;font-size:1.1rem;}
+.profile-stat .lbl{color:var(--text3);font-size:.68rem;text-transform:uppercase;letter-spacing:.5px;margin-top:1px;}
+.profile-actions{display:flex;gap:10px;margin-top:16px;width:100%;max-width:300px;}
+.profile-btn{flex:1;padding:10px 20px;border-radius:var(--radius-full);font-weight:600;font-size:.85rem;cursor:pointer;transition:all .25s;text-align:center;}
+.profile-btn:active{transform:scale(.97);}
+.profile-btn.primary{background:var(--primary-gradient);color:#fff;box-shadow:0 4px 16px rgba(255,59,92,.2);}
+.profile-btn.secondary{background:var(--surface3);color:var(--text);border:1px solid rgba(255,255,255,.06);}
+.profile-body{flex:1;overflow-y:auto;padding:0 16px 20px;}
+.profile-section{margin-bottom:20px;}
+.profile-section h3{font-size:.78rem;font-weight:600;color:var(--text3);margin-bottom:10px;text-transform:uppercase;letter-spacing:.8px;}
+.memories-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;border-radius:var(--radius-sm);overflow:hidden;}
+.memories-grid .thumb{aspect-ratio:1;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:1.6rem;cursor:pointer;transition:all .2s;color:var(--text3);}
+.memories-grid .thumb:active{transform:scale(.95);}
+.settings-item{display:flex;align-items:center;gap:14px;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer;transition:all .2s;}
+.settings-item:active{opacity:.5;}
+.settings-item .icon{font-size:1.1rem;width:26px;opacity:.6;}
+.settings-item .info{flex:1;}
+.settings-item .info .title{font-weight:500;font-size:.88rem;}
+.settings-item .info .desc{color:var(--text3);font-size:.73rem;margin-top:1px;}
+.settings-item .arrow{color:var(--text3);font-size:.75rem;}
+#notifScreen{background:var(--surface);}
+.notif-list{flex:1;overflow-y:auto;padding:4px 0 12px;}
+.notif-item{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer;}
+.notif-item:active{background:var(--surface3);}
+.notif-item .icon-wrap{width:38px;height:38px;border-radius:50%;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;margin-top:2px;}
+.notif-item .text{flex:1;font-size:.83rem;line-height:1.45;}
+.notif-item .text b{font-weight:600;}
+.notif-item .time{color:var(--text3);font-size:.7rem;flex-shrink:0;margin-top:2px;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(12px);z-index:300;display:none;justify-content:center;align-items:flex-end;animation:fadeIn .2s ease;}
+.modal-overlay.active{display:flex;}
+.modal-content{background:var(--surface2);border-radius:24px 24px 0 0;width:100%;max-width:500px;max-height:80vh;padding:20px 20px calc(20px + env(safe-area-inset-bottom));overflow-y:auto;animation:slideUp .35s;}
+.modal-handle{width:36px;height:4px;border-radius:4px;background:rgba(255,255,255,.1);margin:0 auto 18px;}
+.modal-title{font-size:1.1rem;font-weight:700;margin-bottom:14px;}
+.toast-container{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:500;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:8px;}
+.toast{padding:10px 22px;border-radius:var(--radius-full);background:rgba(0,0,0,.85);backdrop-filter:blur(16px);color:#fff;font-size:.82rem;font-weight:500;border:1px solid rgba(255,255,255,.06);box-shadow:0 4px 24px rgba(0,0,0,.4);animation:toastIn .3s;pointer-events:auto;white-space:nowrap;max-width:90vw;}
+@media(min-width:500px){.auth-box{max-width:400px;}.modal-content{border-radius:24px;margin:auto;max-height:70vh;max-width:440px;}}
+.mic-btn{width:36px;height:36px;border-radius:50%;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:1rem;cursor:pointer;transition:all .2s;flex-shrink:0;border:none;color:var(--text);}
+.mic-btn:active{transform:scale(.9);}
+.mic-btn.recording{background:var(--primary);animation:pulse 1s infinite;color:#fff;}
+.voice-msg{display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:12px;background:rgba(255,255,255,.08);cursor:pointer;transition:all .2s;font-size:.88rem;}
+.voice-msg:active{transform:scale(.97);}
+.voice-msg .voice-duration{font-size:.72rem;opacity:.6;min-width:24px;}
+.media-viewer-content{position:relative;display:flex;align-items:center;justify-content:center;width:100%;height:100%;padding:20px;}
+.media-viewer-close{position:absolute;top:50px;right:16px;width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;font-size:1.2rem;cursor:pointer;z-index:10;border:none;color:#fff;backdrop-filter:blur(8px);}
+#mediaViewerInner{max-width:100%;max-height:90vh;display:flex;align-items:center;justify-content:center;}
+#mediaViewerInner img,#mediaViewerInner video{max-width:100%;max-height:90vh;border-radius:12px;object-fit:contain;box-shadow:0 8px 40px rgba(0,0,0,.5);}
+#mediaViewer.modal-overlay{align-items:center;background:rgba(0,0,0,.92);}
+@media(max-width:380px){.capture-btn{width:64px;height:64px;}.capture-btn .inner{inset:4px;}.capture-btn.recording .inner{inset:16px;}}
+</style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+<div class="screen active no-scroll" id="splashScreen">
+  <img src="logo.jpg" alt="Flash" class="splash-brand" />
+  <div class="splash-logo">Flash</div>
+  <div class="splash-sub">Capture the moment</div>
+  <div class="splash-loader"></div>
+</div>
+<div class="screen no-scroll" id="authScreen">
+  <div class="auth-box">
+    <div class="auth-logo"><img src="logo.jpg" alt="Flash" /><h1>Flash.</h1><p>Sign in to capture the moment</p></div>
+    <div class="auth-tabs"><div class="auth-tab active" data-tab="login">Log In</div><div class="auth-tab" data-tab="signup">Sign Up</div></div>
+    <div class="auth-error" id="authError"></div>
+    <div id="loginForm">
+      <div class="auth-field"><span class="icon">✉️</span><input type="email" id="loginEmail" placeholder="Email or phone number" autocomplete="email" /></div>
+      <div class="auth-field"><span class="icon">🔒</span><input type="password" id="loginPass" placeholder="Password" autocomplete="current-password" /></div>
+      <button class="auth-btn primary" onclick="authLogin()">Log In</button>
+      <button class="auth-btn ghost" onclick="showToast('Password reset link sent')">Forgot your password?</button>
+    </div>
+    <div id="signupForm" style="display:none;">
+      <div class="auth-field"><span class="icon">✉️</span><input type="email" id="signupEmail" placeholder="Email or phone number" autocomplete="email" /></div>
+      <div class="auth-field"><span class="icon">👤</span><input type="text" id="signupName" placeholder="Username" autocomplete="username" /></div>
+      <div class="auth-field"><span class="icon">🔒</span><input type="password" id="signupPass" placeholder="Password" autocomplete="new-password" /></div>
+      <button class="auth-btn primary" onclick="authSignup()">Create Account</button>
+      <p style="text-align:center;color:var(--text3);font-size:.72rem;margin-top:12px;line-height:1.5;">By joining, you agree to our Terms of Service and Privacy Policy</p>
+    </div>
+    <div class="auth-divider">or continue with</div>
+    <div class="auth-social"><button onclick="showToast('Google sign-in')">🔵 Google</button><button onclick="showToast('Apple sign-in')">🍎 Apple</button></div>
+  </div>
+</div>
+<div class="screen no-scroll" id="cameraScreen">
+  <div class="camera-view" id="cameraView">
+    <video id="cameraVideo" autoplay playsinline muted></video>
+    <div class="filter-overlay" id="filterOverlay"></div>
+    <div class="capture-flash" id="captureFlash"></div>
+    <div class="camera-timer" id="cameraTimer"></div>
+    <div class="camera-overlay">
+      <div class="camera-top">
+        <div class="left"><div class="cam-btn" id="flashBtn" onclick="toggleFlash()" style="position:relative;">⚡<span class="flash-status" id="flashStatus">ON</span></div><div class="cam-btn" onclick="showToast('Timer: 3s')">⏱️</div></div>
+        <div class="right"><div class="cam-btn" onclick="showToast('Memories opened')">📷</div><div class="cam-btn" onclick="showModal('settingsModal')">⚙️</div></div>
+      </div>
+      <div class="filters-bar" id="filtersBar">
+        <div class="filter-chip active" data-filter="">Normal</div>
+        <div class="filter-chip" data-filter="clarendon">Clarendon</div>
+        <div class="filter-chip" data-filter="gingham">Gingham</div>
+        <div class="filter-chip" data-filter="juno">Juno</div>
+        <div class="filter-chip" data-filter="lark">Lark</div>
+        <div class="filter-chip" data-filter="reyes">Reyes</div>
+        <div class="filter-chip" data-filter="aden">Aden</div>
+        <div class="filter-chip" data-filter="perpetua">Perpetua</div>
+      </div>
+      <div class="camera-bottom">
+        <div class="cam-side-btn" onclick="showModal('stickersModal')">😊</div>
+        <button class="capture-btn" id="captureBtn" onclick="capturePhoto()"><div class="inner"></div></button>
+        <div class="cam-side-btn" onclick="switchCamera()">🔄</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="screen" id="chatScreen">
+  <div class="chat-header"><h2>Chat</h2><div style="flex:1"></div><div class="cam-btn" onclick="showModal('newChatModal')" style="width:34px;height:34px;font-size:.9rem;background:var(--surface3);">✏️</div></div>
+  <div class="chat-search"><input type="text" placeholder="Search conversations..." id="chatSearchInput" oninput="renderChatList()" /></div>
+  <div class="chat-list" id="chatList"></div>
+</div>
+<div class="screen no-scroll" id="conversationScreen">
+  <div class="conv-header">
+    <span class="back" onclick="closeConversation()">←</span>
+    <div class="info"><div class="name" id="convName">Friend</div><div class="status" id="convStatus">Online</div></div>
+    <div class="actions"><span onclick="startVideoCall()">📹</span><span onclick="showToast('More options')">⋯</span></div>
+  </div>
+  <div class="conv-messages" id="convMessages"></div>
+  <div class="conv-input">
+    <span class="plus" onclick="document.getElementById('convFileInput').click()">➕</span>
+    <input type="file" id="convFileInput" accept="image/*,video/*" style="display:none" multiple onchange="sendMedia(event)" />
+    <input type="text" placeholder="Message..." id="convInput" oninput="toggleSendBtn()" onkeydown="if(event.key==='Enter'&&this.value.trim())sendMessage()" />
+    <button class="mic-btn" id="micBtn" onmousedown="startRecording()" onmouseup="stopRecording()" onmouseleave="stopRecording()" ontouchstart="startRecording()" ontouchend="stopRecording()" ontouchcancel="stopRecording()">🎤</button>
+    <button class="send-btn" id="convSendBtn" onclick="sendMessage()" disabled>➤</button>
+  </div>
+</div>
+<div class="screen" id="storiesScreen">
+  <div class="stories-header"><h2>Stories</h2><div class="cam-btn" onclick="showToast('Add to your story')" style="width:34px;height:34px;font-size:.9rem;background:var(--surface3);">➕</div></div>
+  <div class="stories-list" id="storiesList"></div>
+</div>
+<div id="storyViewer">
+  <div class="story-progress" id="storyProgress"></div>
+  <div class="story-viewer-body" id="storyViewerBody">
+    <button class="story-close" onclick="closeStoryViewer()">✕</button>
+    <div class="story-header-overlay"><div class="story-ring" style="width:36px;height:36px;padding:2px;flex-shrink:0;"><div class="inner" id="storyViewerAvatar" style="font-size:.7rem;">👤</div></div><span class="name" id="storyViewerName">User</span><span class="time" id="storyViewerTime">1h ago</span></div>
+    <div class="media" id="storyViewerMedia" style="font-size:5rem;text-align:center;">🌆</div>
+    <div class="story-text" id="storyViewerText"></div>
+  </div>
+</div>
+<div class="screen no-scroll" id="feedScreen">
+  <div class="feed-viewport" id="feedViewport"></div>
+</div>
+<div class="screen" id="profileScreen">
+  <div class="profile-cover"></div>
+  <div class="profile-head">
+    <div class="profile-avatar" id="profileAvatar">👤<div class="badge" onclick="showToast('Change profile photo')">✏️</div></div>
+    <div class="profile-name" id="profileName">Guest User</div>
+    <div class="profile-username" id="profileUsername">@guest</div>
+    <div class="profile-bio" id="profileBio">Living life one snap at a time ✨</div>
+    <div class="profile-stats"><div class="profile-stat" onclick="showToast('View snaps')"><div class="num" id="profileSnaps">0</div><div class="lbl">Snaps</div></div><div class="profile-stat" onclick="showToast('View friends')"><div class="num" id="profileFriends">6</div><div class="lbl">Friends</div></div><div class="profile-stat" onclick="showToast('Streak')"><div class="num" id="profileStreak">0</div><div class="lbl">Streak</div></div></div>
+    <div class="profile-actions"><button class="profile-btn primary" onclick="showToast('Edit profile')">Edit Profile</button><button class="profile-btn secondary" onclick="showModal('settingsModal')">Settings</button></div>
+  </div>
+  <div class="profile-body">
+    <div class="profile-section"><h3>Memories</h3><div class="memories-grid" id="memoriesGrid"><div class="thumb">📸</div><div class="thumb">🎥</div><div class="thumb">🌅</div><div class="thumb">🏖️</div><div class="thumb">🎉</div><div class="thumb" onclick="showToast('View all memories')">+9</div></div></div>
+    <div class="profile-section"><h3>Quick Settings</h3><div class="settings-list">
+      <div class="settings-item" onclick="showToast('Privacy settings')"><span class="icon">🔒</span><div class="info"><div class="title">Privacy</div><div class="desc">Story viewers, location, contact</div></div><span class="arrow">›</span></div>
+      <div class="settings-item" onclick="showToast('Notifications settings')"><span class="icon">🔔</span><div class="info"><div class="title">Notifications</div><div class="desc">Message alerts, story views</div></div><span class="arrow">›</span></div>
+      <div class="settings-item" onclick="showToast('Friend requests')"><span class="icon">👥</span><div class="info"><div class="title">Friend Requests</div><div class="desc">3 pending requests</div></div><span class="arrow">›</span></div>
+      <div class="settings-item" onclick="showToast('Account settings')"><span class="icon">👤</span><div class="info"><div class="title">Account</div><div class="desc">Email, phone, password</div></div><span class="arrow">›</span></div>
+      <div class="settings-item" onclick="showToast('Blocked users')"><span class="icon">🚫</span><div class="info"><div class="title">Blocked Users</div><div class="desc">Manage blocked accounts</div></div><span class="arrow">›</span></div>
+      <div class="settings-item" onclick="authLogout()" style="border-bottom:none;"><span class="icon">🚪</span><div class="info"><div class="title" style="color:var(--primary);">Log Out</div><div class="desc">Sign out of your account</div></div><span class="arrow">›</span></div>
+    </div></div>
+  </div>
+</div>
+<div class="screen" id="notifScreen">
+  <div class="chat-header"><h2>Notifications</h2></div>
+  <div class="notif-list" id="notifList"></div>
+</div>
+<div class="modal-overlay" id="settingsModal"><div class="modal-content"><div class="modal-handle"></div><div class="modal-title">Settings</div>
+  <div class="settings-list">
+    <div class="settings-item" onclick="showToast('Privacy controls opened')"><span class="icon">🔒</span><div class="info"><div class="title">Privacy Controls</div><div class="desc">Location, story views, who can contact you</div></div><span class="arrow">›</span></div>
+    <div class="settings-item" onclick="showToast('Account settings')"><span class="icon">👤</span><div class="info"><div class="title">Account</div><div class="desc">Email, phone number, password</div></div><span class="arrow">›</span></div>
+    <div class="settings-item" onclick="showToast('Notification preferences')"><span class="icon">🔔</span><div class="info"><div class="title">Notifications</div><div class="desc">Manage push notifications</div></div><span class="arrow">›</span></div>
+    <div class="settings-item" onclick="showToast('Data saver')"><span class="icon">📶</span><div class="info"><div class="title">Data Saver</div><div class="desc">Reduce data usage</div></div><span class="arrow">›</span></div>
+    <div class="settings-item" onclick="showToast('Report a problem')"><span class="icon">⚠️</span><div class="info"><div class="title">Report</div><div class="desc">Report a safety concern or bug</div></div><span class="arrow">›</span></div>
+    <div class="settings-item" onclick="showToast('About Flash')"><span class="icon">ℹ️</span><div class="info"><div class="title">About</div><div class="desc">Version 2.0.1</div></div><span class="arrow">›</span></div>
+  </div>
+</div></div>
+<div class="modal-overlay" id="stickersModal"><div class="modal-content"><div class="modal-handle"></div><div class="modal-title">Stickers & Text</div>
+  <p style="color:var(--text3);font-size:.82rem;margin-bottom:14px;">Add personality to your snap</p>
+  <div style="display:flex;flex-wrap:wrap;gap:10px;font-size:2rem;margin-bottom:16px;justify-content:center;">
+    <span class="sticker-opt" onclick="addSticker(this.textContent)">😎</span>
+    <span class="sticker-opt" onclick="addSticker(this.textContent)">🔥</span>
+    <span class="sticker-opt" onclick="addSticker(this.textContent)">❤️</span>
+    <span class="sticker-opt" onclick="addSticker(this.textContent)">🎉</span>
+    <span class="sticker-opt" onclick="addSticker(this.textContent)">💯</span>
+    <span class="sticker-opt" onclick="addSticker(this.textContent)">✨</span>
+    <span class="sticker-opt" onclick="addSticker(this.textContent)">🚀</span>
+    <span class="sticker-opt" onclick="addSticker(this.textContent)">👻</span>
+    <span class="sticker-opt" onclick="addSticker(this.textContent)">🌈</span>
+    <span class="sticker-opt" onclick="addSticker(this.textContent)">⭐</span>
+    <span class="sticker-opt" onclick="addSticker(this.textContent)">💀</span>
+    <span class="sticker-opt" onclick="addSticker(this.textContent)">👀</span>
+  </div>
+  <style>.sticker-opt{cursor:pointer;transition:transform .2s;display:inline-block;}.sticker-opt:hover{transform:scale(1.2);}</style>
+  <div class="auth-field" style="margin-bottom:8px;"><span class="icon">✏️</span><input type="text" id="stickerTextInput" placeholder="Type custom text..." /></div>
+  <div style="display:flex;gap:10px;"><button class="auth-btn primary" onclick="addCustomText()" style="flex:1;">Add Text</button><button class="auth-btn ghost" onclick="closeModal('stickersModal')" style="color:var(--text2);">Done</button></div>
+</div></div>
+<div class="modal-overlay" id="newChatModal"><div class="modal-content"><div class="modal-handle"></div><div class="modal-title">New Conversation</div>
+  <div class="auth-field"><span class="icon">🔍</span><input type="text" placeholder="Search by name..." id="newChatSearch" oninput="renderNewChatSearch()" /></div>
+  <p style="color:var(--text3);font-size:.75rem;margin:6px 0 12px;">Suggested friends</p>
+  <div id="newChatResults"></div>
+</div></div>
+<div class="modal-overlay" id="mediaViewer"><div class="media-viewer-content"><button class="media-viewer-close" onclick="closeMediaViewer()">✕</button><div id="mediaViewerInner"></div></div></div>
+<div class="bottom-nav" id="bottomNav">
+  <div class="nav-item active" data-screen="camera"><span class="icon">📷</span>Camera</div>
+  <div class="nav-item" data-screen="chat"><span class="icon">💬</span>Chat<span class="badge" id="chatBadge" style="display:none;">3</span></div>
+  <div class="nav-item" data-screen="stories"><span class="icon">🔄</span>Stories</div>
+  <div class="nav-item" data-screen="feed"><span class="icon">▶️</span>Feed</div>
+  <div class="nav-item" data-screen="profile"><span class="icon">👤</span>Profile</div>
+</div>
+<script>
+const state={user:null,isLoggedIn:false,cameraStream:null,facingMode:'user',flashOn:false,capturedPhoto:null,currentStoryUserIdx:0,currentStoryIdx:0,storyTimer:null,currentFriend:null,feedIdx:0};
+const friends=[{id:1,name:'Alex Rivera',username:'alex_r',status:'online',avatar:'A'},{id:2,name:'Mia Chen',username:'mia_c',status:'online',avatar:'M'},{id:3,name:'Jordan Lee',username:'jlee',status:'online',avatar:'J'},{id:4,name:'Sam Wilson',username:'samw',status:'offline',avatar:'S'},{id:5,name:'Taylor Kim',username:'tayk',status:'offline',avatar:'T'},{id:6,name:'Morgan Cruz',username:'morgc',status:'online',avatar:'M'}];
+const stories=[{userId:1,name:'Alex Rivera',avatar:'A',time:'5m ago',stories:[{type:'image',content:'🌆',text:'Sunset vibes'},{type:'image',content:'🎸',text:'Jam session'}]},{userId:2,name:'Mia Chen',avatar:'M',time:'12m ago',stories:[{type:'image',content:'🍜',text:'Noodles 🍜'}]},{userId:3,name:'Jordan Lee',avatar:'J',time:'1h ago',stories:[{type:'image',content:'🏋️',text:'Grinding'}]},{userId:5,name:'Taylor Kim',avatar:'T',time:'3h ago',stories:[{type:'image',content:'🎨',text:'New project'}]}];
+const feedVideos=[{id:1,username:'@alex_r',caption:'Highway rush 🏎️',likes:142,color:'#1a1a3a',emoji:'🏎️',music:'Speed of Sound'},{id:2,username:'@mia_c',caption:'Morning coffee ☕',likes:89,color:'#2a1a2a',emoji:'☕',music:'Lofi beats'},{id:3,username:'@jlee',caption:'Gym session 💪',likes:234,color:'#1a2a1a',emoji:'💪',music:'Workout mix'},{id:4,username:'@samw',caption:'Beach day 🌊',likes:56,color:'#1a2a3a',emoji:'🌊',music:'Chill waves'},{id:5,username:'@tayk',caption:'Art studio 🎨',likes:178,color:'#2a1a3a',emoji:'🎨',music:'Creative flow'}];
+const messages={1:[{text:'Hey! How are you?',sent:true,time:'10:30 AM'},{text:'Yo! I am good, you?',sent:false,time:'10:31 AM'},{text:'Just finished my new edit!',sent:true,time:'10:32 AM'},{text:'Send it! 🔥',sent:false,time:'10:33 AM'}],2:[{text:'That sunset was unreal',sent:false,time:'9:15 AM'},{text:'I know right! 😍',sent:true,time:'9:16 AM'}],3:[{text:'Coming to the gym later?',sent:false,time:'8:00 AM'},{text:'Yeah, see you at 6',sent:true,time:'8:02 AM'}],5:[{text:'Love your art! 🎨',sent:true,time:'Yesterday'},{text:'Thank you so much!',sent:false,time:'Yesterday'}]};
+document.querySelectorAll('.auth-tab').forEach(t=>{t.addEventListener('click',()=>{document.querySelectorAll('.auth-tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');const l=t.dataset.tab==='login';document.getElementById('loginForm').style.display=l?'block':'none';document.getElementById('signupForm').style.display=l?'none':'block';document.getElementById('authError').style.display='none';});});
+function authLogin(){const e=document.getElementById('loginEmail').value.trim(),p=document.getElementById('loginPass').value.trim();if(!e||!p)return showAuthError('Please fill in all fields');state.user={name:e.split('@')[0]||'User',username:(e.split('@')[0]||'user').toLowerCase(),email:e};state.isLoggedIn=true;document.getElementById('authScreen').classList.remove('active');enterApp();}
+function authSignup(){const e=document.getElementById('signupEmail').value.trim(),n=document.getElementById('signupName').value.trim()||e.split('@')[0],p=document.getElementById('signupPass').value.trim();if(!e||!p)return showAuthError('Please fill in all fields');state.user={name:n,username:n.toLowerCase().replace(/\s/g,'_'),email:e};state.isLoggedIn=true;document.getElementById('authScreen').classList.remove('active');enterApp();}
+function authLogout(){state.isLoggedIn=false;state.user=null;stopCamera();document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('authScreen').classList.add('active');document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));}
+function showAuthError(m){const e=document.getElementById('authError');e.textContent=m;e.style.display='block';setTimeout(()=>e.style.display='none',3000);}
+function enterApp(){updateProfile();showScreen('camera');initCamera();renderChatList();renderStories();renderFeed();renderNotifications();}
+function showScreen(name){const m={camera:'cameraScreen',chat:'chatScreen',stories:'storiesScreen',feed:'feedScreen',profile:'profileScreen',notif:'notifScreen',conversation:'conversationScreen'};Object.values(m).forEach(id=>document.getElementById(id).classList.remove('active'));if(m[name])document.getElementById(m[name]).classList.add('active');document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));const ni={camera:0,chat:1,stories:2,feed:3,profile:4};if(ni[name]!==undefined)document.querySelectorAll('.nav-item')[ni[name]].classList.add('active');if(name==='camera')initCamera();else if(name!=='conversation')stopCamera();}
+document.querySelectorAll('.nav-item').forEach(item=>{item.addEventListener('click',()=>showScreen(item.dataset.screen));});
+async function initCamera(){if(state.cameraStream)return;try{const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:state.facingMode,width:{ideal:1080},height:{ideal:1920}},audio:true});state.cameraStream=s;document.getElementById('cameraVideo').srcObject=s;await document.getElementById('cameraVideo').play();}catch(e){document.getElementById('cameraVideo').style.display='none';}}
+function stopCamera(){if(state.cameraStream){state.cameraStream.getTracks().forEach(t=>t.stop());state.cameraStream=null;}}
+async function switchCamera(){state.facingMode=state.facingMode==='user'?'environment':'user';stopCamera();await initCamera();}
+function toggleFlash(){state.flashOn=!state.flashOn;document.getElementById('flashStatus').style.display=state.flashOn?'inline':'none';showToast(state.flashOn?'Flash on':'Flash off');}
+document.querySelectorAll('.filter-chip').forEach(chip=>{chip.addEventListener('click',()=>{document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));chip.classList.add('active');state.currentFilter=chip.dataset.filter;document.getElementById('filterOverlay').className='filter-overlay'+(state.currentFilter?' '+state.currentFilter:'');});});
+function capturePhoto(){const v=document.getElementById('cameraVideo');const c=document.createElement('canvas');c.width=v.videoWidth||720;c.height=v.videoHeight||1280;const ctx=c.getContext('2d');if(state.facingMode==='user'){ctx.translate(c.width,0);ctx.scale(-1,1);}ctx.drawImage(v,0,0);state.capturedPhoto=c.toDataURL('image/jpeg',0.9);showToast('📸 Snap captured!');const g=document.getElementById('memoriesGrid');const t=document.createElement('div');t.className='thumb';if(state.capturedPhoto){t.style.background='url('+state.capturedPhoto+') center/cover';t.style.color='transparent';}if(g.children.length>=6)g.removeChild(g.lastElementChild);g.insertBefore(t,g.firstChild);document.getElementById('profileSnaps').textContent=parseInt(document.getElementById('profileSnaps').textContent)+1;const f=document.getElementById('captureFlash');f.classList.add('active');setTimeout(()=>{f.classList.add('fade');setTimeout(()=>f.classList.remove('active','fade'),300);},100);}
+function addSticker(s){showToast('Added '+s);closeModal('stickersModal');}
+function addCustomText(){const t=document.getElementById('stickerTextInput').value.trim();if(t)showToast('Added text: "'+t+'"');closeModal('stickersModal');}
+function renderChatList(){const list=document.getElementById('chatList');const q=document.getElementById('chatSearchInput').value.toLowerCase();list.innerHTML='';(q?friends.filter(f=>f.name.toLowerCase().includes(q)):friends).forEach(f=>{const msgs=messages[f.id]||[];const last=msgs[msgs.length-1];const d=document.createElement('div');d.className='chat-item';const unread=f.id===1?2:f.id===2?1:0;let preview='Start chatting';if(last){if(last.sent)preview='You: ';else preview='';if(last.media){if(last.type==='image')preview+='📷 Photo';else if(last.type==='video')preview+='🎥 Video';else if(last.type==='voice')preview+='🎤 Voice';else preview+='📎 Media';}else preview+=last.text;}d.innerHTML='<div class="chat-avatar">'+f.avatar+(f.status==='online'?'<div class="online"></div>':'')+'</div><div class="chat-info"><div class="name">'+f.name+'</div><div class="msg">'+preview+'</div></div><div class="chat-meta"><div class="time">'+(last?last.time:'')+'</div>'+(unread?'<div class="unread">'+unread+'</div>':'')+'</div>';d.onclick=()=>openConversation(f);list.appendChild(d);});}
+function openConversation(friend){state.currentFriend=friend;document.getElementById('convName').textContent=friend.name;document.getElementById('convStatus').textContent=friend.status==='online'?'Online':'Offline';showScreen('conversation');renderMessages();}
+function closeConversation(){showScreen('chat');}
+function renderMessages(){const c=document.getElementById('convMessages');const msgs=messages[state.currentFriend?.id]||[];c.innerHTML='';msgs.forEach(m=>{const d=document.createElement('div');d.className='msg-bubble '+(m.sent?'sent':'received');const meta=document.createElement('div');meta.className='meta';meta.innerHTML=m.time+(m.sent?'<span class="status-icon">✓✓</span>':'');if(m.media&&m.type==='voice'){const w=document.createElement('div');w.className='voice-msg';w.innerHTML='🎤 <span class="voice-duration">'+(m.duration||0)+'s</span>';const a=document.createElement('audio');a.src=m.text;a.style.display='none';a.onended=()=>w.classList.remove('playing');w.onclick=()=>{w.classList.add('playing');a.play();};w.appendChild(a);d.appendChild(w);}else if(m.media&&m.type==='image'){const img=document.createElement('img');img.src=m.text;img.style.cssText='max-width:200px;max-height:250px;border-radius:8px;cursor:pointer;display:block;';img.onclick=()=>openMediaViewer(m.text,'image');d.appendChild(img);}else if(m.media&&m.type==='video'){const v=document.createElement('video');v.src=m.text;v.style.cssText='max-width:200px;max-height:250px;border-radius:8px;cursor:pointer;';v.controls=true;v.onclick=e=>{e.stopPropagation();openMediaViewer(m.text,'video');};d.appendChild(v);}else{d.textContent=m.text;}d.appendChild(meta);c.appendChild(d);});c.scrollTop=c.scrollHeight;}
+function sendMessage(){const i=document.getElementById('convInput');const t=i.value.trim();if(!t||!state.currentFriend)return;const n=new Date();const time=n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0');const msgs=messages[state.currentFriend.id]||[];msgs.push({text:t,sent:true,time});messages[state.currentFriend.id]=msgs;i.value='';toggleSendBtn();renderMessages();renderChatList();setTimeout(()=>{const replies=['Cool! 🔥','Nice!','Lol 😂','For real!','Say more...','Got it!','👍'];msgs.push({text:replies[Math.floor(Math.random()*replies.length)],sent:false,time:new Date().getHours().toString().padStart(2,'0')+':'+new Date().getMinutes().toString().padStart(2,'0')});messages[state.currentFriend.id]=msgs;renderMessages();renderChatList();},1200+Math.random()*1800);}
+function sendMedia(e){const f=e.target.files[0];if(!f||!state.currentFriend)return;const url=URL.createObjectURL(f);const type=f.type.startsWith('video')?'video':'image';const n=new Date();const time=n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0');const msgs=messages[state.currentFriend.id]||[];msgs.push({text:url,sent:true,time,media:true,type});messages[state.currentFriend.id]=msgs;renderMessages();renderChatList();e.target.value='';}
+let mediaRecorder=null;let audioChunks=[];let recordingTimer=null;let recordingSeconds=0;
+async function startRecording(){try{if(mediaRecorder&&mediaRecorder.state==='recording')return;const s=await navigator.mediaDevices.getUserMedia({audio:true});mediaRecorder=new MediaRecorder(s);audioChunks=[];recordingSeconds=0;mediaRecorder.ondataavailable=e=>{if(e.data.size>0)audioChunks.push(e.data);};mediaRecorder.onstop=()=>{s.getTracks().forEach(t=>t.stop());if(audioChunks.length===0)return;const b=new Blob(audioChunks,{type:'audio/webm'});const url=URL.createObjectURL(b);if(state.currentFriend){const n=new Date();const t=n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0');const msgs=messages[state.currentFriend.id]||[];msgs.push({text:url,sent:true,time:t,media:true,type:'voice',duration:recordingSeconds});messages[state.currentFriend.id]=msgs;renderMessages();renderChatList();}};mediaRecorder.start();document.getElementById('micBtn').classList.add('recording');document.getElementById('micBtn').textContent='⏺';clearInterval(recordingTimer);recordingTimer=setInterval(()=>{recordingSeconds++;document.getElementById('micBtn').textContent='⏺'+recordingSeconds;},1000);}catch(e){showToast('Microphone access denied');}}
+function stopRecording(){if(mediaRecorder&&mediaRecorder.state==='recording'){mediaRecorder.stop();clearInterval(recordingTimer);document.getElementById('micBtn').classList.remove('recording');document.getElementById('micBtn').textContent='🎤';}}
+function openMediaViewer(url,type){document.getElementById('mediaViewer').classList.add('active');document.getElementById('mediaViewerInner').innerHTML=type==='image'?'<img src="'+url+'" />':'<video src="'+url+'" controls autoplay></video>';}
+function closeMediaViewer(){document.getElementById('mediaViewer').classList.remove('active');document.getElementById('mediaViewerInner').innerHTML='';}
+function toggleSendBtn(){document.getElementById('convSendBtn').disabled=!document.getElementById('convInput').value.trim();}
+function startVideoCall(){showToast('📹 Video call connecting...');setTimeout(()=>showToast('Call ended (1:23)'),3000);}
+function renderNewChatSearch(){const q=document.getElementById('newChatSearch').value.toLowerCase();const c=document.getElementById('newChatResults');c.innerHTML='';(q?friends.filter(f=>f.name.toLowerCase().includes(q)):friends).forEach(f=>{const d=document.createElement('div');d.className='chat-item';d.innerHTML='<div class="chat-avatar">'+f.avatar+'</div><div class="chat-info"><div class="name">'+f.name+'</div><div class="msg">@'+f.username+'</div></div>';d.onclick=()=>{closeModal('newChatModal');openConversation(f);};c.appendChild(d);});}
+function renderStories(){const list=document.getElementById('storiesList');list.innerHTML='';const my=document.createElement('div');my.className='story-row';my.innerHTML='<div class="story-ring has-story"><div class="inner" style="display:flex;align-items:center;justify-content:center;font-size:1.4rem;">👤</div><div class="plus">+</div></div><div class="story-info"><div class="name">My Story</div><div class="sub">Tap to add</div></div>';my.onclick=()=>showToast('Add to your story');list.appendChild(my);stories.forEach(s=>{const d=document.createElement('div');d.className='story-row';d.innerHTML='<div class="story-ring has-story"><div class="inner" style="display:flex;align-items:center;justify-content:center;font-size:1.4rem;">'+s.avatar+'</div></div><div class="story-info"><div class="name">'+s.name+'</div><div class="sub">'+s.time+'</div></div>';d.onclick=()=>openStoryViewer(s);list.appendChild(d);});}
+let storyTimer=null;
+function openStoryViewer(userStory){state.currentStoryUserIdx=stories.indexOf(userStory);state.currentStoryIdx=0;document.getElementById('storyViewer').classList.add('active');renderStoryProgress();showCurrentStory();}
+function renderStoryProgress(){const c=document.getElementById('storyProgress');const us=stories[state.currentStoryUserIdx];c.innerHTML='';us.stories.forEach((_,i)=>{const b=document.createElement('div');b.className='bar'+(i<state.currentStoryIdx?' viewed':'');const f=document.createElement('div');f.className='fill';b.appendChild(f);c.appendChild(b);});}
+function showCurrentStory(){const us=stories[state.currentStoryUserIdx];const s=us.stories[state.currentStoryIdx];document.getElementById('storyViewerName').textContent=us.name;document.getElementById('storyViewerTime').textContent=us.time;document.getElementById('storyViewerMedia').textContent=s.content;document.getElementById('storyViewerText').textContent=s.text||'';renderStoryProgress();if(storyTimer)clearTimeout(storyTimer);storyTimer=setTimeout(nextStory,4000);}
+function nextStory(){if(state.currentStoryIdx<stories[state.currentStoryUserIdx].stories.length-1){state.currentStoryIdx++;showCurrentStory();}else if(state.currentStoryUserIdx<stories.length-1){state.currentStoryUserIdx++;state.currentStoryIdx=0;showCurrentStory();}else closeStoryViewer();}
+function closeStoryViewer(){if(storyTimer)clearTimeout(storyTimer);document.getElementById('storyViewer').classList.remove('active');}
+document.getElementById('storyViewerBody').addEventListener('click',e=>{const r=e.currentTarget.getBoundingClientRect();const x=e.clientX-r.left;if(x<r.width*.3&&state.currentStoryIdx>0){state.currentStoryIdx--;showCurrentStory();}else nextStory();});
+function renderFeed(){const c=document.getElementById('feedViewport');c.innerHTML='';feedVideos.forEach((v,i)=>{const d=document.createElement('div');d.className='feed-slide';d.style.display=i===0?'block':'none';d.innerHTML='<div class="feed-bg" style="background:'+v.color+'">'+v.emoji+'</div><div class="feed-gradient"></div><div class="feed-nav">'+feedVideos.map((_,j)=>'<div class="dot'+(j===i?' active':'')+'"></div>').join('')+'</div><div class="feed-sidebar"><div class="feed-action" onclick="likeFeed('+i+')"><span class="icon">❤️</span><span class="label" id="feedLike'+i+'">'+v.likes+'</span></div><div class="feed-action" onclick="showToast(\'Comment\')"><span class="icon">💬</span><span class="label">Comment</span></div><div class="feed-action" onclick="showToast(\'Shared\')"><span class="icon">↗️</span><span class="label">Share</span></div></div><div class="feed-bottom"><div class="username">'+v.username+'</div><div class="caption">'+v.caption+'</div><div class="music">🎵 '+v.music+'</div></div>';c.appendChild(d);});}
+function showFeedVideo(idx){document.querySelectorAll('.feed-slide').forEach((v,i)=>v.style.display=i===idx?'block':'none');}
+function likeFeed(idx){feedVideos[idx].likes++;const el=document.getElementById('feedLike'+idx);if(el)el.textContent=feedVideos[idx].likes;showToast('Liked! ❤️');}
+let feedTouchStart=0;
+document.getElementById('feedViewport').addEventListener('touchstart',e=>{feedTouchStart=e.touches[0].clientY;});
+document.getElementById('feedViewport').addEventListener('touchend',e=>{const d=e.changedTouches[0].clientY-feedTouchStart;if(Math.abs(d)>50){if(d<0&&state.feedIdx<feedVideos.length-1){state.feedIdx++;showFeedVideo(state.feedIdx);}else if(d>0&&state.feedIdx>0){state.feedIdx--;showFeedVideo(state.feedIdx);}}});
+document.getElementById('feedViewport').addEventListener('wheel',e=>{if(e.deltaY>0&&state.feedIdx<feedVideos.length-1){state.feedIdx++;showFeedVideo(state.feedIdx);}else if(e.deltaY<0&&state.feedIdx>0){state.feedIdx--;showFeedVideo(state.feedIdx);}});
+function renderNotifications(){const list=document.getElementById('notifList');list.innerHTML='';[{icon:'❤️',text:'<b>Mia Chen</b> liked your snap',time:'2m ago'},{icon:'💬',text:'<b>Alex Rivera</b> replied to your story',time:'15m ago'},{icon:'👥',text:'<b>Jordan Lee</b> added you as a friend',time:'1h ago'},{icon:'🔄',text:'<b>Taylor Kim</b> mentioned you',time:'3h ago'},{icon:'📸',text:'Your story got <b>24 views</b>',time:'5h ago'}].forEach(n=>{const d=document.createElement('div');d.className='notif-item';d.innerHTML='<div class="icon-wrap">'+n.icon+'</div><div class="text">'+n.text+'</div><div class="time">'+n.time+'</div>';list.appendChild(d);});}
+function updateProfile(){if(!state.user)return;document.getElementById('profileName').textContent=state.user.name;document.getElementById('profileUsername').textContent='@'+state.user.username;}
+function showModal(id){document.getElementById(id).classList.add('active');}
+function closeModal(id){document.getElementById(id).classList.remove('active');}
+document.querySelectorAll('.modal-overlay').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('active');});});
+function showToast(msg){const c=document.getElementById('toastContainer');const t=document.createElement('div');t.className='toast';t.textContent=msg;c.appendChild(t);setTimeout(()=>t.remove(),2200);}
+setTimeout(()=>{document.getElementById('splashScreen').classList.remove('active');document.getElementById('authScreen').classList.add('active');},2500);
+</script>
+</body>
+</html>
